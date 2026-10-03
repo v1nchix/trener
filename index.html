@@ -141,6 +141,8 @@ input,select{font-size:16px}
 .energy button{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;font-family:var(--wide);font-variation-settings:'wdth' 151,'opsz' 144;font-size:11px;transition:.25s}
 .energy button.on{background:#fff;color:#000;border-color:#fff;box-shadow:0 0 18px rgba(255,255,255,.45)}
 .energy button:active{transform:scale(.92)}
+.rep{display:block;width:100%;min-height:240px;margin-top:16px;padding:14px 16px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--text);font-family:var(--body);font-size:16px;line-height:1.5;resize:vertical;outline:none}
+.rep[hidden]{display:none}
 .small{font-size:12px;color:var(--dim);margin-top:10px;line-height:1.5}
 .banner{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:12px}
 
@@ -322,6 +324,13 @@ input,select{font-size:16px}
       <p class="small">1 еле живая, 5 летаю. Через пару недель увидишь, как она растёт.</p>
       <div class="energy" id="energy"></div>
     </div>
+  </div>
+  <div class="card" style="margin-top:12px">
+    <div class="banner" style="margin:0">
+      <div><h3>Отчёт тренеру</h3><p class="small" style="margin-top:6px">Скопирую итог дня готовым текстом. Вставь его в чат с тренером.</p></div>
+      <button class="btn solid" id="repBtn">Скопировать отчёт</button>
+    </div>
+    <textarea id="repTxt" class="rep" readonly hidden aria-label="Текст отчёта"></textarea>
   </div>
 </section>
 
@@ -881,6 +890,26 @@ document.querySelectorAll('.tabbar button').forEach(b=>b.onclick=()=>tab(b.datas
 
 // свет за курсором
 document.addEventListener('mousemove',e=>{const c=e.target.closest&&e.target.closest('.card');if(!c)return;const r=c.getBoundingClientRect();c.style.setProperty('--x',(e.clientX-r.left)+'px');c.style.setProperty('--y',(e.clientY-r.top)+'px')});
+
+// отчёт тренеру: итог дня текстом, копируется в одно касание
+function report(ds){
+  const I=info(ds),qs=quests(ds),r=peek(ds),st=stats(),L=level(st.xp),d=parse(ds),W=weights(),a=W.length?avg7(W,ds):null;
+  const out=[`Отчёт за ${d.getDate()} ${MON[d.getMonth()]} (день ${I.n+1}, неделя ${I.week})`,`Сделано ${doneCount(ds)} из ${qs.length}, ${dayXP(ds)} XP`,''];
+  qs.forEach(q=>{let t=q.t;if(q.type==='steps')t=`Шаги: ${fmt(r.steps||0)} из ${fmt(I.steps)}`;if(q.type==='water')t=`Вода: ${r.water||0} из 6 стаканов`;out.push((isDone(ds,q)?'+ ':'- ')+t)});
+  out.push(`Приседания между катками: ${r.sets||0} подх. (${(r.sets||0)*10} раз)`,'');
+  out.push(r.weight?`Вес: ${f1(r.weight)} кг`+(a?`, среднее за 7 дней ${f1(a)}`:''):'Вес: не взвешивалась');
+  if(r.energy)out.push(`Энергия: ${r.energy} из 5`);
+  out.push(`Серия: ${st.streak} ${dn(st.streak)}, уровень ${L.i+1} «${L.name}», всего ${fmt(st.xp)} XP`);
+  out.push(`Цель: ${f1(S.startWeight)} → ${f1(S.goal)} кг, сброшено ${f1(st.lost)} кг`+(S.height?`, рост ${S.height} см`:''));
+  const m=S.measures[S.measures.length-1];if(m)out.push(`Последний замер: талия ${m.w?f1(m.w):'-'}, бёдра ${m.h?f1(m.h):'-'}, планка ${m.p||'-'} с`);
+  return out.join('\n');
+}
+$('repBtn').onclick=()=>{
+  const t=report(view),ta=$('repTxt');ta.value=t;ta.hidden=false;
+  const ok=()=>toast('Отчёт скопирован. Вставь его тренеру');
+  const fb=()=>{try{ta.focus();ta.select();document.execCommand('copy')?ok():toast('Зажми текст ниже и скопируй')}catch(e){toast('Зажми текст ниже и скопируй')}};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(ok,fb);else fb();
+};
 
 // первый запуск: вес, цель, рост, возраст
 function checkSetup(){$('onb').classList.toggle('show',!S.setup)}
